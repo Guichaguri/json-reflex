@@ -1,5 +1,5 @@
 {
-  "name": "@sdui-reflex/expressions",
+  "name": "json-reflex",
   "version": "1.0.0",
   "description": "A lightweight expression processor for evaluating expressions in a secure and efficient manner.",
   "keywords": [
@@ -8,7 +8,7 @@
     "parser",
     "evaluator",
     "react",
-    "sdui"
+    "json"
   ],
   "type": "module",
   "scripts": {
