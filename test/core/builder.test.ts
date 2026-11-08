@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildExpression } from '../../src/core/builder.js';
-import type { ExpressionProcessorOptions } from '../../src/core/types.js';
+import type { ExpressionEngineOptions } from '../../src/core/types.js';
 
-const options: ExpressionProcessorOptions = {
+const options: ExpressionEngineOptions = {
   functions: new Map([['upper', (s: string) => s.toUpperCase()]]),
 };
 

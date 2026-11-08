@@ -2,6 +2,9 @@ import type { ExpressionFunction } from '../core/types.js';
 
 const ensureStr = (str: any): string => (str ?? '').toString();
 
+/**
+ * String-based functions. Allows basic string manipulation.
+ */
 export const stringFunctions = new Map<string, ExpressionFunction>([
   ['length', (str: string) => ensureStr(str).length],
   ['toUpperCase', (str: string) => ensureStr(str).toUpperCase()],
@@ -20,6 +23,9 @@ export const stringFunctions = new Map<string, ExpressionFunction>([
   ['repeat', (str: string, count: number) => ensureStr(str).repeat(count)],
 ]);
 
+/**
+ * Number-based functions. Allow basic math operations.
+ */
 export const mathFunctions = new Map<string, ExpressionFunction>([
   ['max', Math.max],
   ['min', Math.min],
@@ -39,6 +45,9 @@ export const mathFunctions = new Map<string, ExpressionFunction>([
   ['atan', Math.atan],
 ]);
 
+/**
+ * Standard functions. Contains string-based and number-based functions.
+ */
 export const stdFunctions = new Map<string, ExpressionFunction>([
   ...stringFunctions,
   ...mathFunctions,

@@ -1,5 +1,5 @@
 import { ExpressionStateProvider, useExpressionEngine } from '../../src/react/index.js';
-import type { ExpressionProcessorOptions } from '../../src/core/types.js';
+import type { ExpressionEngineOptions } from '../../src/core/types.js';
 import { stdFunctions } from '../../src/std/functions.js';
 import { useState } from 'react';
 import { type ComponentItem, loadData } from './data.js';
@@ -7,7 +7,7 @@ import { Article } from './components/article.js';
 import { Shortcuts } from './components/shortcuts.js';
 import { createRoot } from 'react-dom/client';
 
-const options: ExpressionProcessorOptions = {
+const options: ExpressionEngineOptions = {
   functions: stdFunctions,
 };
 

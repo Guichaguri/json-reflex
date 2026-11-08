@@ -1,7 +1,7 @@
 import { StateContext } from './context.js';
 import { setFromPath, walkThroughObject } from './utils.js';
 import type {
-  ExpressionProcessorOptions,
+  ExpressionEngineOptions,
   ObjectWithExpressions,
   ObjectWithoutExpressions,
 } from './types.js';
@@ -25,7 +25,7 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
   constructor(
     private readonly context: StateContext,
     raw: T,
-    private readonly options: ExpressionProcessorOptions,
+    private readonly options: ExpressionEngineOptions,
   ) {
     this.evaluatedObject = structuredClone(raw) as ObjectWithoutExpressions<T>;
     const initialState = context.getState();
@@ -79,6 +79,10 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
     this.evaluate(this.context.getState());
   }
 
+  /**
+   * Updates the evaluated object based on the passed state.
+   * @param state The state map
+   */
   private evaluate(state: Map<string, any>): void {
     this.expressions.forEach(ref => {
       const newValue = ref.evaluate(state);

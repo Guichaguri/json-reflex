@@ -1,14 +1,14 @@
 import jsep from 'jsep';
 import { describe, expect, it, vi } from 'vitest';
 import { evaluateNode, extractDependencies } from '../../src/core/evaluator.js';
-import type { ExpressionProcessorOptions } from '../../src/core/types.js';
+import type { ExpressionEngineOptions } from '../../src/core/types.js';
 
-const options: ExpressionProcessorOptions = { functions: new Map() };
+const options: ExpressionEngineOptions = { functions: new Map() };
 
 function evaluate(
   expression: string,
   state: Record<string, any> = {},
-  opts: ExpressionProcessorOptions = options,
+  opts: ExpressionEngineOptions = options,
 ): any {
   return evaluateNode(jsep(expression), new Map(Object.entries(state)), opts);
 }

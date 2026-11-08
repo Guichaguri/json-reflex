@@ -1,6 +1,6 @@
 import jsep from 'jsep';
 import { evaluateNode, extractDependencies } from './evaluator.js';
-import type { ExpressionProcessorOptions } from './types.js';
+import type { ExpressionEngineOptions } from './types.js';
 
 export type EvaluateExpression = (context: Map<string, any>) => any;
 
@@ -14,7 +14,7 @@ export type EvaluateExpression = (context: Map<string, any>) => any;
 export function buildExpression(
   expression: string,
   dependencies: Set<string>,
-  options: ExpressionProcessorOptions,
+  options: ExpressionEngineOptions,
 ): EvaluateExpression {
   const ast = jsep(expression);
 

@@ -7,7 +7,7 @@ import type {
   Literal,
   UnaryExpression
 } from 'jsep';
-import type { ExpressionProcessorOptions } from './types.js';
+import type { ExpressionEngineOptions } from './types.js';
 
 /**
  * Walks through all nodes and extracts the dependencies.
@@ -59,7 +59,7 @@ export function extractDependencies(
 export function evaluateNode(
   node: Expression,
   context: Map<string, any>,
-  options: ExpressionProcessorOptions,
+  options: ExpressionEngineOptions,
 ): any {
   switch (node.type) {
     case 'BinaryExpression':

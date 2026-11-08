@@ -1,9 +1,9 @@
 import { createRoot } from 'react-dom/client';
-import type { ExpressionOrValue, ExpressionProcessorOptions } from '../../src/core/types.js';
+import type { ExpressionOrValue, ExpressionEngineOptions } from '../../src/core/types.js';
 import { ExpressionStateProvider, useExpressionEngine, useExpressionState } from '../../src/react/index.js';
 import { stdFunctions } from '../../src/std/functions.js';
 
-const options: ExpressionProcessorOptions = {
+const options: ExpressionEngineOptions = {
   functions: stdFunctions,
 };
 

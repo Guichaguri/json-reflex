@@ -3,12 +3,12 @@ import { act, cleanup, render, renderHook, screen } from '@testing-library/react
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StateContext } from '../../src/core/context.js';
-import type { ExpressionOrValue, ExpressionProcessorOptions } from '../../src/core/types.js';
+import type { ExpressionOrValue, ExpressionEngineOptions } from '../../src/core/types.js';
 import { ExpressionStateProvider, useExpressionEngine, useExpressionState } from '../../src/react/index.js';
 
 afterEach(cleanup);
 
-function wrapper(initialState?: Map<string, any>, options?: ExpressionProcessorOptions) {
+function wrapper(initialState?: Map<string, any>, options?: ExpressionEngineOptions) {
   return ({ children }: { children: ReactNode }) => (
     <ExpressionStateProvider
       {...(initialState ? { initialState } : {})}

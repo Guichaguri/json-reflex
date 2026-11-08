@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { StateContext } from '../../src/core/context.js';
 import { ExpressionEngine } from '../../src/core/engine.js';
-import type { ExpressionProcessorOptions } from '../../src/core/types.js';
+import type { ExpressionEngineOptions } from '../../src/core/types.js';
 
-const options: ExpressionProcessorOptions = {
+const options: ExpressionEngineOptions = {
   functions: new Map([['double', (n: number) => n * 2]]),
 };
 

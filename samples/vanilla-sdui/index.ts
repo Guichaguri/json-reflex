@@ -1,12 +1,12 @@
 import { ExpressionEngine } from '../../src/core/engine.js';
 import { StateContext } from '../../src/core/context.js';
-import type { ExpressionProcessorOptions } from '../../src/core/types.js';
+import type { ExpressionEngineOptions } from '../../src/core/types.js';
 import { stdFunctions } from '../../src/std/functions.js';
 import { type ComponentItem, loadData } from './data.js';
 import { renderArticle } from './components/article.js';
 import { renderShortcuts } from './components/shortcuts.js';
 
-const options: ExpressionProcessorOptions = {
+const options: ExpressionEngineOptions = {
   functions: stdFunctions,
 };
 

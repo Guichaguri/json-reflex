@@ -14,10 +14,10 @@ export interface Expression { $expr: string }
 export type ExpressionOrValue<T> = T | Expression;
 
 /**
- * Represents a primitive value in TypeScript, which includes string, number, bigint, boolean, symbol, regex, null, and undefined.
+ * Represents a primitive value in TypeScript, which includes string, number, bigint, boolean, regex, null, and undefined.
  * This type is used to define values that are considered primitive and can be used in expressions or as plain values.
  */
-export type Primitive = string | number | bigint | boolean | symbol | RegExp | null | undefined;
+export type Primitive = string | number | bigint | boolean | RegExp | null | undefined;
 
 /**
  * Represents a function that can be used in expressions to perform operations or calculations.
@@ -32,9 +32,9 @@ export type ExpressionFunction = (...args: any[]) => any;
 export type ExpressionFunctions = Map<string, ExpressionFunction>;
 
 /**
- * Options for the expression processor.
+ * Options for the expression engine.
  */
-export interface ExpressionProcessorOptions {
+export interface ExpressionEngineOptions {
   functions: ExpressionFunctions;
 }
 
