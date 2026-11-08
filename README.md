@@ -1,5 +1,9 @@
 # json-reflex
 
+[![npm version](https://img.shields.io/npm/v/json-reflex)](https://www.npmjs.com/package/jsx-object)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/json-reflex)](https://bundlephobia.com/package/jsx-object)
+[![license](https://img.shields.io/npm/l/json-reflex)](./LICENSE)
+
 An expression and state management library for building reactive UIs from pure JSON.
 
 If you have a server-driven UI, json-reflex lets your JSON include small expressions for conditionals, formatting and math. They are evaluated on the client against a shared state, and re-evaluated when that state changes.
