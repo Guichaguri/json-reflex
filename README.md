@@ -18,7 +18,8 @@ If you have a server-driven UI, json-reflex lets your JSON include small express
 - **No `eval`:** expressions are parsed into a syntax tree and evaluated by a small interpreter. Only the operators listed below and the functions you provide are available.
 - **Standard functions:** optional string and math helpers.
 - **React bindings:** a provider and two hooks, with React as an optional peer dependency.
-- **TypeScript types:** `ObjectWithExpressions<T>` and `ObjectWithoutExpressions<T>` describe objects before and after evaluation.
+- **TypeScript types:** `AllowExpressions<T>`, `ExpressionOrValue<T>` and `ObjectWithoutExpressions<T>` describe objects before and after evaluation.
+- **Contained errors:** a broken expression only affects its own value, with the expression and its path in the error.
 
 ## Installation
 
@@ -32,7 +33,7 @@ The package has three entry points:
 
 | Import from          | Contains                                                         |
 | -------------------- | ---------------------------------------------------------------- |
-| `json-reflex`        | `StateContext`, `ExpressionEngine` and the TypeScript types      |
+| `json-reflex`        | `StateContext`, `ExpressionEngine`, `ExpressionError` and the TypeScript types |
 | `json-reflex/react`  | `ExpressionStateProvider`, `useExpressionState`, `useExpressionEngine` |
 | `json-reflex/std`    | `stdFunctions`, `stringFunctions`, `mathFunctions`               |
 
@@ -41,7 +42,7 @@ The package has three entry points:
 ```tsx
 import { ExpressionStateProvider, useExpressionEngine, useExpressionState } from 'json-reflex/react';
 import { stdFunctions } from 'json-reflex/std';
-import type { ObjectWithExpressions } from 'json-reflex';
+import type { AllowExpressions } from 'json-reflex';
 
 const options = { functions: stdFunctions };
 const initialState = new Map([['quantity', 1]]);
@@ -55,7 +56,7 @@ const App = () => (
   </ExpressionStateProvider>
 );
 
-const Line = (props: ObjectWithExpressions<{ label: string; total: number }>) => {
+const Line = (props: AllowExpressions<{ label: string; total: number }>) => {
   const { evaluated } = useExpressionEngine(props);
 
   return <p>{evaluated.label}: {evaluated.total}</p>;
@@ -197,7 +198,35 @@ Expressions use a small, JavaScript-like syntax. Identifiers are read from the s
 
 Not supported (these throw an error): property access (`user.name`), array and object literals, method calls (`name.trim()`), and `??`.
 
-A state key that isn't set reads as `undefined`. Calling a function that isn't in `options.functions` throws `Function not found`.
+A state key that isn't set reads as `undefined`. Calling a function that isn't in `options.functions` fails with `Unknown function "name"`.
+
+## Handling errors
+
+An expression can fail while being parsed (invalid or unsupported syntax) or while being evaluated (for example, an unknown function). A failed expression's value becomes `undefined`, and the other expressions are still evaluated.
+
+Each failure is an `ExpressionError` with the expression, the path to its property and the original error as `cause`:
+
+```
+ExpressionError: Failed to evaluate expression "isVip ? badge() : null" at "header.badge": Unknown function "badge". Only functions in options.functions can be called
+```
+
+| Property     | Description |
+| ------------ | ----------- |
+| `expression` | The expression source, as written in `$expr`. |
+| `path`       | The path to the property, for example `['items', '0', 'title']`. |
+| `phase`      | `'parse'` or `'evaluate'`. |
+| `cause`      | The original error. |
+
+By default, the error is thrown from the `ExpressionEngine` constructor or from `update()`. When several expressions fail at once, they are thrown together in an `AggregateError`. Errors during re-evaluations triggered by `setState` are never thrown, so one broken expression doesn't stop the rest of the UI from updating; use `onError` to see them.
+
+With server-driven data, you'll usually want to report errors instead of throwing them. Pass `onError`:
+
+```ts
+const options: ExpressionEngineOptions = {
+  functions: stdFunctions,
+  onError: (error) => console.warn(error.message, error.path),
+};
+```
 
 ## Standard functions
 
@@ -205,6 +234,62 @@ Import them from `json-reflex/std`. `stdFunctions` contains both groups.
 
 - **`stringFunctions`:** `length`, `toUpperCase`, `toLowerCase`, `substring`, `concat`, `trim`, `replace`, `includes`, `startsWith`, `endsWith`, `indexOf`, `lastIndexOf`, `padStart`, `padEnd`, `repeat`. They take the string as the first argument, for example `padStart(code, 4, "0")`, and treat `null` and `undefined` as an empty string.
 - **`mathFunctions`:** `max`, `min`, `abs`, `round`, `floor`, `ceil`, `sqrt`, `pow`, `log`, `exp`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`. These are the matching `Math` functions.
+
+`padStart` and `padEnd` cap the target length at 10,000 characters, and `repeat` caps the count at 10,000, so an expression can't allocate huge strings. To allow longer strings, register your own versions of these functions.
+
+## TypeScript types
+
+These types describe your objects before and after evaluation. They are type-only, so they add nothing to your bundle.
+
+| Type                          | Description |
+| ----------------------------- | ----------- |
+| `Expression`                  | An expression object: `{ $expr: string }`. |
+| `ExpressionOrValue<T>`        | A value of type `T`, or an expression that evaluates to one: `T \| Expression`. |
+| `AllowExpressions<T>`         | `T` with every primitive, at any depth, replaced by `ExpressionOrValue`. Functions are kept as they are. |
+| `ObjectWithoutExpressions<T>` | The opposite: `T` with every `ExpressionOrValue<X>` replaced by `X`. This is the type of `evaluated`. |
+| `ObjectWithExpressions<T>`    | A constraint that checks that `T` only holds plain values and expressions. |
+
+Use `ExpressionOrValue` to mark the specific properties that can be expressions:
+
+```ts
+import type { ExpressionOrValue, ObjectWithoutExpressions } from 'json-reflex';
+
+interface CardProps {
+  title: ExpressionOrValue<string>;
+  count: ExpressionOrValue<number>;
+  icon: string; // always a plain value
+}
+
+type EvaluatedCardProps = ObjectWithoutExpressions<CardProps>;
+// { title: string; count: number; icon: string }
+```
+
+Use `AllowExpressions` to allow expressions anywhere in an existing type, which is handy for the props of server-driven components:
+
+```ts
+import type { AllowExpressions } from 'json-reflex';
+
+interface ProductProps {
+  name: string;
+  price: { amount: number; currency: string };
+  tags: string[];
+}
+
+type ProductData = AllowExpressions<ProductProps>;
+// {
+//   name: ExpressionOrValue<string>;
+//   price: { amount: ExpressionOrValue<number>; currency: ExpressionOrValue<string> };
+//   tags: ExpressionOrValue<string>[];
+// }
+
+const product: ProductData = {
+  name: 'Coffee',
+  price: { amount: { $expr: 'isMember ? 4 : 5' }, currency: 'USD' },
+  tags: ['hot', { $expr: 'isMember ? "member deal" : "regular"' }],
+};
+```
+
+`ObjectWithoutExpressions<AllowExpressions<T>>` gives back `T`, so `useExpressionEngine(product).evaluated` is typed as `ProductProps`.
 
 ## API
 
@@ -216,7 +301,7 @@ Holds the state shared by every engine, as a `Map` of keys to primitive values.
 | --------------------------------- | ----------- |
 | `new StateContext(initialState?)` | Creates a state from a `Map`. The map is used as-is, not copied. |
 | `getState()`                      | Returns the state `Map`. |
-| `setState(entries)`               | Sets `[key, value]` pairs and notifies listeners. Only values that differ (`!==`) are reported as changed. |
+| `setState(entries)`               | Sets `[key, value]` pairs and notifies listeners. Only values that differ (`!==`) are reported as changed, and listeners aren't called when nothing changed. If a listener throws, the error is ignored and the others are still called. |
 | `toggleState(keys)`               | Negates each key's value by truthiness. Missing keys become `true`. |
 | `incrementState(keys, amount)`    | Adds `amount` to each key. Use a negative amount to decrement. See below. |
 | `subscribe(listener)`             | Calls `listener(state, changedKeys)` after every update. Returns an unsubscribe function. |
@@ -237,6 +322,16 @@ Evaluates the expressions in an object against a `StateContext`.
 | `evaluated`                               | The object with every expression replaced by its value. |
 | `subscribe(callback)`                     | Re-evaluates and calls `callback(evaluated)` when a key the expressions depend on changes. Returns an unsubscribe function. |
 | `update()`                                | Re-evaluates every expression. Only needed when you don't use `subscribe`. |
+
+The engine options:
+
+| Option      | Description |
+| ----------- | ----------- |
+| `functions` | A `Map` of the functions expressions can call. |
+| `onError`   | Called with an `ExpressionError` when an expression fails. When omitted, errors are thrown. See [Handling errors](#handling-errors). |
+| `deepClone` | How `object` is copied before expressions are replaced. By default, it uses `structuredClone`, or `JSON.parse(JSON.stringify(object))` where `structuredClone` isn't available (like React Native). Both only support serializable data: `structuredClone` throws on functions and symbols, and JSON drops them. Pass your own function for other data, or `false` to modify `object` in place. |
+
+Keys such as `__proto__` and `constructor` in the data are treated as ordinary properties, so data from a server can't modify object prototypes.
 
 ### React
 

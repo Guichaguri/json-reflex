@@ -1,22 +1,36 @@
 {
   "name": "json-reflex",
-  "version": "1.0.0",
+  "version": "0.1.0",
+  "license": "MIT",
+  "author": "Guilherme Chaguri",
   "description": "A lightweight expression processor for evaluating expressions in a secure and efficient manner.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Guichaguri/json-reflex.git"
+  },
+  "homepage": "https://github.com/Guichaguri/json-reflex#readme",
+  "bugs": {
+    "url": "https://github.com/Guichaguri/json-reflex/issues"
+  },
   "keywords": [
     "expression",
     "processor",
     "parser",
     "evaluator",
     "react",
-    "json"
+    "json",
+    "sdui",
+    "server-driven-ui",
+    "state",
+    "reactive"
   ],
   "type": "module",
+  "sideEffects": false,
   "scripts": {
     "build": "tsdown",
     "test": "vitest",
-    "coverage": "vitest run --coverage --coverage.include=src/**/*.ts",
+    "coverage": "vitest run --coverage",
     "prepack": "tsdown",
-    "build:test": "tsc --project tsconfig.test.json",
     "sample:react": "vite ./samples/react",
     "sample:react-sdui": "vite ./samples/react-sdui",
     "sample:vanilla-sdui": "vite ./samples/vanilla-sdui"
@@ -24,8 +38,19 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.cts",
+  "typesVersions": {
+    "*": {
+      "react": [
+        "./dist/react/index.d.cts"
+      ],
+      "std": [
+        "./dist/std/index.d.cts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "import": {
@@ -62,7 +87,7 @@
     "jsep": "^1.6.0"
   },
   "peerDependencies": {
-    "react": ">=16.0.0"
+    "react": ">=16.14.0"
   },
   "peerDependenciesMeta": {
     "react": {
