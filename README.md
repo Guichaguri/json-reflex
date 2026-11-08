@@ -14,12 +14,11 @@ If you have a server-driven UI, json-reflex lets your JSON include small express
 ## Features
 
 - **Pure JSON:** expressions are plain `{ "$expr": "..." }` objects, so they can be sent from a server, stored, or generated. They can be nested at any depth inside objects and arrays.
-- **Targeted updates:** each engine tracks which state keys its expressions read, and is only re-evaluated when one of those keys changes.
+- **Shared state, local updates:** each component tracks which state keys its expressions read, and is only re-evaluated when one of those keys changes.
 - **No `eval`:** expressions are parsed into a syntax tree and evaluated by a small interpreter. Only the operators listed below and the functions you provide are available.
-- **Standard functions:** optional string and math helpers.
-- **React bindings:** a provider and two hooks, with React as an optional peer dependency.
-- **TypeScript types:** `AllowExpressions<T>`, `ExpressionOrValue<T>` and `ObjectWithoutExpressions<T>` describe objects before and after evaluation.
-- **Contained errors:** a broken expression only affects its own value, with the expression and its path in the error.
+- **Custom functions:** expressions can call the functions you provide.
+- **Framework agnostic:** pure JS, can be used in any frontend framework
+- **React bindings:** ready to use context and hooks for React
 
 ## Installation
 
