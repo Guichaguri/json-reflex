@@ -1,3 +1,5 @@
+import type { ExpressionError } from './errors.js';
+
 /**
  * Represents an expression that can be evaluated to produce a value.
  * This interface is used to define objects that contain expressions, allowing for dynamic evaluation of values based on the current state context.
@@ -35,7 +37,24 @@ export type ExpressionFunctions = Map<string, ExpressionFunction>;
  * Options for the expression engine.
  */
 export interface ExpressionEngineOptions {
-  functions: ExpressionFunctions;
+  /**
+   * The functions available in expressions
+   */
+  functions?: ExpressionFunctions;
+
+  /**
+   * The engine will clone the object before mutating it.
+   * This allows providing a custom deep clone function implementation.
+   * Set this to `false` to mutate the original object, without deep cloning it.
+   */
+  deepClone?: (<T>(object: T) => T) | false;
+
+  /**
+   * Called when an expression fails to parse or evaluate. The failed expression's value becomes `undefined`.
+   *
+   * When omitted, the error is thrown instead, after every other expression in the engine has been updated.
+   */
+  onError?: (error: ExpressionError) => void;
 }
 
 /**

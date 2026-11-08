@@ -1,4 +1,5 @@
 import { StateContext } from './context.js';
+import { ExpressionError } from './errors.js';
 import { setFromPath, walkThroughObject } from './utils.js';
 import type {
   ExpressionEngineOptions,
@@ -10,6 +11,7 @@ import { buildExpression, type EvaluateExpression } from './builder.js';
 interface ExpressionRef {
   path: string[];
   key: string;
+  expression: string;
   evaluate: EvaluateExpression;
 }
 
@@ -22,28 +24,46 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
   private dependencies: Set<string> = new Set<string>();
   private evaluatedObject: ObjectWithoutExpressions<T>;
 
+  /**
+   * Creates a new expression engine.
+   *
+   * @param context The state
+   * @param raw The object to search for expressions. It must be JSON-serializable
+   * @param options The engine options
+   * @throws {ExpressionError} If an expression fails to parse or evaluate and `options.onError` is not set.
+   * If several fail, they are thrown together in an `AggregateError`.
+   */
   constructor(
     private readonly context: StateContext,
     raw: T,
     private readonly options: ExpressionEngineOptions,
   ) {
-    this.evaluatedObject = structuredClone(raw) as ObjectWithoutExpressions<T>;
-    const initialState = context.getState();
+    this.evaluatedObject = this.deepClone(raw) as ObjectWithoutExpressions<T>;
+    const errors: ExpressionError[] = [];
 
     walkThroughObject(raw, (path, key, value) => {
-      if (value && typeof value === 'object' && '$expr' in value) {
-        const evaluate = buildExpression(value.$expr, this.dependencies, this.options);
+      if (!value || typeof value !== 'object' || !Object.hasOwn(value, '$expr')) {
+        return;
+      }
 
-        this.expressions.push({
-          path,
-          key,
-          evaluate,
-        });
+      const expression = value.$expr;
 
-        // Initial value
-        setFromPath(this.evaluatedObject, path, key, evaluate(initialState));
+      try {
+        if (typeof expression !== 'string') {
+          throw new Error(`"$expr" must be a string, but got ${expression === null ? 'null' : typeof expression}`);
+        }
+
+        const evaluate = buildExpression(expression, this.dependencies, this.options);
+        this.expressions.push({ path, key, expression, evaluate });
+      } catch (error) {
+        errors.push(new ExpressionError(String(expression), [...path, key], 'parse', error));
+        setFromPath(this.evaluatedObject, path, key, undefined);
       }
     });
+
+    // Initial values
+    errors.push(...this.evaluate(context.getState()));
+    this.reportErrors(errors);
   }
 
   /**
@@ -55,14 +75,19 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
 
   /**
    * Subscribes to changes in the evaluated object.
+   *
+   * When an expression fails, `onChanged` is still called with the other expressions updated.
+   * Errors are only reported through `options.onError`: the state update that caused them doesn't throw.
+   *
    * @param onChanged - The callback to be called when the evaluated object changes.
    * @returns A function to unsubscribe from the changes.
    */
   public subscribe(onChanged: (evaluated: ObjectWithoutExpressions<T>) => void): () => void {
     return this.context.subscribe((state: Map<string, any>, changedProperties: string[]) => {
       if (changedProperties.some(prop => this.dependencies.has(prop))) {
-        this.evaluate(state);
+        const errors = this.evaluate(state);
         onChanged(this.evaluatedObject);
+        this.reportErrors(errors);
       }
     });
   }
@@ -74,20 +99,80 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
    *
    * You don't need to call this method if you are using the subscribe method,
    * as it will automatically update the evaluated object when relevant state changes occur.
+   *
+   * @throws {ExpressionError} If an expression fails and `options.onError` is not set.
    */
   public update(): void {
-    this.evaluate(this.context.getState());
+    this.reportErrors(this.evaluate(this.context.getState()));
   }
 
   /**
    * Updates the evaluated object based on the passed state.
+   * A failing expression is set to `undefined` and does not stop the others from being evaluated.
+   *
    * @param state The state map
+   * @returns The errors thrown by the failing expressions
    */
-  private evaluate(state: Map<string, any>): void {
-    this.expressions.forEach(ref => {
-      const newValue = ref.evaluate(state);
+  private evaluate(state: Map<string, any>): ExpressionError[] {
+    const errors: ExpressionError[] = [];
+
+    for (const ref of this.expressions) {
+      let newValue: unknown;
+
+      try {
+        newValue = ref.evaluate(state);
+      } catch (error) {
+        errors.push(new ExpressionError(ref.expression, [...ref.path, ref.key], 'evaluate', error));
+        newValue = undefined;
+      }
+
       setFromPath(this.evaluatedObject, ref.path, ref.key, newValue);
-    });
+    }
+
+    return errors;
+  }
+
+  /**
+   * Passes the errors to `options.onError`, or throws them when it is not set.
+   * @param errors The errors to report
+   */
+  private reportErrors(errors: ExpressionError[]): void {
+    if (errors.length === 0) {
+      return;
+    }
+
+    const onError = this.options.onError;
+
+    if (onError) {
+      errors.forEach(error => onError(error));
+    } else if (errors.length === 1) {
+      throw errors[0];
+    } else {
+      throw new AggregateError(errors, `${errors.length} expressions failed:\n${errors.map(e => e.message).join('\n')}`);
+    }
+  }
+
+  /**
+   * Deep clones the object
+   * @param object The base object
+   * @returns A clone of the base object
+   */
+  private deepClone(object: T): T {
+    if (this.options.deepClone === false) {
+      return object;
+    }
+
+    if (this.options.deepClone) {
+      return this.options.deepClone(object);
+    }
+
+    // Structured clone is the fastest deep clone implementation
+    if (typeof structuredClone === 'function') {
+      return structuredClone(object);
+    }
+
+    // JSON for platforms with no structuredClone (like React Native)
+    return JSON.parse(JSON.stringify(object));
   }
 
 }
