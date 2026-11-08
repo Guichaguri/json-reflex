@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 import { StateContext } from '../core/context.js';
 import { ExpressionEngine } from '../core/engine.js';
 import type { ExpressionEngineOptions, ObjectWithExpressions, ObjectWithoutExpressions } from '../core/types.js';
@@ -109,16 +109,14 @@ export function useExpressionEngine<T extends ObjectWithExpressions<any>>(
     return new ExpressionEngine(context.state, object, options ?? context.options);
   }, [context, object, options]);
 
-  const [evaluated, setEvaluated] = useState<UseExpressionEngineResult<T>>(() => ({
+  // The engine updates its evaluated object in place, so this counter only forces a re-render.
+  // The result is always read from the current engine, so it is never stale when the engine is replaced.
+  const [version, forceRender] = useReducer((count: number) => count + 1, 0);
+
+  useEffect(() => processor.subscribe(forceRender), [processor]);
+
+  return useMemo(() => ({
     state: context.state!,
     evaluated: processor.evaluated,
-  }));
-
-  useEffect(() => {
-    return processor.subscribe((evaluated) => {
-      setEvaluated({ state: context.state!, evaluated });
-    });
-  }, [processor]);
-
-  return evaluated;
+  }), [context, processor, version]);
 }

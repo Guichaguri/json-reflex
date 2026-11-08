@@ -77,6 +77,50 @@ describe('useExpressionEngine', () => {
     expect(result.current.evaluated).toEqual({ value: 8 });
   });
 
+  it('re-evaluates immediately when the object changes', () => {
+    const { result, rerender } = renderHook(
+      ({ object }) => useExpressionEngine(object),
+      {
+        wrapper: wrapper(new Map([['a', 3]])),
+        initialProps: { object: { value: { $expr: 'a * 2' } } },
+      },
+    );
+
+    expect(result.current.evaluated).toEqual({ value: 6 });
+
+    rerender({ object: { value: { $expr: 'a + 1' } } });
+
+    expect(result.current.evaluated).toEqual({ value: 4 });
+  });
+
+  it('keeps tracking changes after the object changes', () => {
+    const { result, rerender } = renderHook(
+      ({ object }) => useExpressionEngine(object),
+      {
+        wrapper: wrapper(new Map([['a', 1], ['b', 1]])),
+        initialProps: { object: { value: { $expr: 'a' } } },
+      },
+    );
+
+    rerender({ object: { value: { $expr: 'b' } } });
+    act(() => result.current.state.setState([['b', 5]]));
+
+    expect(result.current.evaluated).toEqual({ value: 5 });
+  });
+
+  it('returns the same result across re-renders when nothing changed', () => {
+    const object = { value: { $expr: 'a' } };
+    const { result, rerender } = renderHook(
+      () => useExpressionEngine(object),
+      { wrapper: wrapper(new Map([['a', 1]])) },
+    );
+    const first = result.current;
+
+    rerender();
+
+    expect(result.current).toBe(first);
+  });
+
   it('uses the functions from the provider options', () => {
     const options = { functions: new Map([['upper', (s: string) => s.toUpperCase()]]) };
     const { result } = renderHook(
