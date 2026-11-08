@@ -10,6 +10,25 @@ import type {
 import type { ExpressionEngineOptions } from './types.js';
 
 /**
+ * Readable names for the jsep nodes that are parsed but not supported.
+ */
+const unsupportedSyntax: Record<string, string> = {
+  MemberExpression: 'property access (like "user.name" or "list[0]")',
+  ArrayExpression: 'array literals (like "[1, 2]")',
+  Compound: 'multiple expressions (separated by "," or ";")',
+  SequenceExpression: 'multiple expressions (separated by ",")',
+  ThisExpression: '"this"',
+};
+
+function unsupportedNode(node: Expression): Error {
+  return new Error(`Unsupported syntax: ${unsupportedSyntax[node.type] ?? node.type}`);
+}
+
+function unsupportedOperator(operator: string): Error {
+  return new Error(`Unsupported operator: ${operator}`);
+}
+
+/**
  * Walks through all nodes and extracts the dependencies.
  *
  * @param node The node to walk through
@@ -45,7 +64,7 @@ export function extractDependencies(
       }
       break;
     default:
-      throw new Error(`Unsupported node type: ${node.type}`);
+      throw unsupportedNode(node);
   }
 }
 
@@ -102,7 +121,7 @@ export function evaluateNode(
         case '>=':
           return left >= right;
         default:
-          throw new Error(`Unsupported operator: ${binaryNode.operator}`);
+          throw unsupportedOperator(binaryNode.operator);
       }
     case 'Literal':
       const literalNode = node as Literal;
@@ -125,25 +144,27 @@ export function evaluateNode(
         case '+':
           return +argument;
         default:
-          throw new Error(`Unsupported operator: ${unaryNode.operator}`);
+          throw unsupportedOperator(unaryNode.operator);
       }
     case 'CallExpression':
       const callNode = node as CallExpression;
 
       if (callNode.callee.type === 'Identifier') {
         const functionName = (callNode.callee as Identifier).name;
-        const func = options.functions.get(functionName);
+        const func = options.functions?.get(functionName);
         const args = callNode.arguments.map((arg: Expression) => evaluateNode(arg, context, options));
 
         if (func) {
           return func(...args);
         } else {
-          throw new Error(`Function not found: ${functionName}`);
+          throw new Error(`Unknown function "${functionName}". Only functions in options.functions can be called`);
         }
       } else {
-        throw new Error(`Unsupported callee type: ${callNode.callee.type}`);
+        throw new Error(callNode.callee.type === 'MemberExpression'
+          ? 'Unsupported syntax: method calls (like "name.trim()"). Call a function instead, like "trim(name)"'
+          : `Unsupported syntax: only named functions can be called, like "max(a, b)"`);
       }
     default:
-      throw new Error(`Unsupported node type: ${node.type}`);
+      throw unsupportedNode(node);
   }
 }

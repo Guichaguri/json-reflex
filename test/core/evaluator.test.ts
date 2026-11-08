@@ -57,8 +57,8 @@ describe('extractDependencies', () => {
   });
 
   it('throws on unsupported node types', () => {
-    expect(() => dependenciesOf('a.b')).toThrow('Unsupported node type: MemberExpression');
-    expect(() => dependenciesOf('[1, 2]')).toThrow('Unsupported node type: ArrayExpression');
+    expect(() => dependenciesOf('a.b')).toThrow('Unsupported syntax: property access');
+    expect(() => dependenciesOf('[1, 2]')).toThrow('Unsupported syntax: array literals');
   });
 });
 
@@ -202,15 +202,36 @@ describe('evaluateNode', () => {
     });
 
     it('throws when the function is not registered', () => {
-      expect(() => evaluate('unknown()')).toThrow('Function not found: unknown');
+      expect(() => evaluate('unknown()')).toThrow('Unknown function "unknown"');
     });
 
     it('throws when the callee is not an identifier', () => {
-      expect(() => evaluate('a.b()')).toThrow('Unsupported callee type: MemberExpression');
+      expect(() => evaluate('a.b()')).toThrow('Unsupported syntax: method calls');
+    });
+
+    it.each(['f()()', '"text"()'])('throws when calling something other than a named function in %s', (expression) => {
+      const opts = { functions: new Map([['f', () => () => 1]]) };
+
+      expect(() => evaluate(expression, {}, opts)).toThrow('Unsupported syntax: only named functions can be called');
     });
   });
 
   it('throws on unsupported node types', () => {
-    expect(() => evaluate('a.b')).toThrow('Unsupported node type: MemberExpression');
+    expect(() => evaluate('a.b')).toThrow('Unsupported syntax: property access');
+  });
+
+  it.each([
+    ['a, b', 'multiple expressions'],
+    ['this', '"this"'],
+    ['[1, 2]', 'array literals'],
+  ])('describes the unsupported syntax in %s', (expression, description) => {
+    expect(() => evaluate(expression)).toThrow(`Unsupported syntax: ${description}`);
+  });
+
+  it('falls back to the node type for unknown nodes', () => {
+    const node = { type: 'CustomExpression' } as unknown as jsep.Expression;
+
+    expect(() => evaluateNode(node, new Map(), options)).toThrow('Unsupported syntax: CustomExpression');
+    expect(() => extractDependencies(node, new Set())).toThrow('Unsupported syntax: CustomExpression');
   });
 });

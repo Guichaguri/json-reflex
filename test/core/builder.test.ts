@@ -32,6 +32,6 @@ describe('buildExpression', () => {
   });
 
   it('throws on unsupported nodes while building', () => {
-    expect(() => buildExpression('a.b', new Set(), options)).toThrow('Unsupported node type: MemberExpression');
+    expect(() => buildExpression('a.b', new Set(), options)).toThrow('Unsupported syntax: property access');
   });
 });
