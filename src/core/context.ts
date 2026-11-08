@@ -31,7 +31,7 @@ export class StateContext {
    * Updates the state with the given entries and notifies every listener.
    *
    * Only entries whose value differs from the current one (compared with `!==`) are applied and
-   * reported as changed. Listeners are always notified, even when no property changed.
+   * reported as changed. Listeners are only notified when at least one property changed.
    *
    * @param entries The key-value pairs to set.
    */
@@ -45,7 +45,15 @@ export class StateContext {
       }
     });
 
-    this.listeners.forEach((listener) => listener(this.state, changedProperties));
+    if (changedProperties.length > 0) {
+      this.listeners.forEach((listener) => {
+        try {
+          listener(this.state, changedProperties);
+        } catch {
+          // Do nothing
+        }
+      });
+    }
   }
 
   /**

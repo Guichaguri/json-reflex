@@ -36,14 +36,14 @@ describe('StateContext', () => {
     expect(listener).toHaveBeenCalledWith(context.getState(), ['b', 'c']);
   });
 
-  it('notifies listeners with no changed properties when nothing changed', () => {
+  it('does not notify listeners when nothing changed', () => {
     const context = new StateContext(new Map([['a', 1]]));
     const listener = vi.fn();
     context.subscribe(listener);
 
     context.setState([['a', 1]]);
 
-    expect(listener).toHaveBeenCalledWith(context.getState(), []);
+    expect(listener).not.toHaveBeenCalled();
   });
 
   it('compares values by reference', () => {
@@ -82,6 +82,25 @@ describe('StateContext', () => {
 
     expect(kept).toHaveBeenCalledTimes(1);
     expect(removed).not.toHaveBeenCalled();
+  });
+
+  it('notifies every listener even when one throws', () => {
+    const context = new StateContext();
+    const after = vi.fn();
+    context.subscribe(() => { throw new Error('boom'); });
+    context.subscribe(after);
+
+    expect(() => context.setState([['a', 1]])).not.toThrow();
+    expect(after).toHaveBeenCalledTimes(1);
+    expect(context.getState().get('a')).toBe(1);
+  });
+
+  it('does not throw when several listeners throw', () => {
+    const context = new StateContext();
+    context.subscribe(() => { throw new Error('first'); });
+    context.subscribe(() => { throw new Error('second'); });
+
+    expect(() => context.setState([['a', 1]])).not.toThrow();
   });
 
   describe('toggleState', () => {
@@ -143,14 +162,14 @@ describe('StateContext', () => {
       expect(listener).toHaveBeenCalledWith(context.getState(), ['a', 'b']);
     });
 
-    it('notifies listeners with no changes when no keys are given', () => {
+    it('does not notify listeners when no keys are given', () => {
       const context = new StateContext();
       const listener = vi.fn();
       context.subscribe(listener);
 
       context.toggleState([]);
 
-      expect(listener).toHaveBeenCalledWith(context.getState(), []);
+      expect(listener).not.toHaveBeenCalled();
     });
   });
 
@@ -260,8 +279,8 @@ describe('StateContext', () => {
       context.incrementState(['a'], 0);
       context.incrementState(['missing'], 0);
 
-      expect(listener).toHaveBeenNthCalledWith(1, context.getState(), []);
-      expect(listener).toHaveBeenNthCalledWith(2, context.getState(), ['missing']);
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith(context.getState(), ['missing']);
     });
 
     it('reports no changes when the amount is zero', () => {
@@ -271,7 +290,7 @@ describe('StateContext', () => {
 
       context.incrementState(['a'], 0);
 
-      expect(listener).toHaveBeenCalledWith(context.getState(), []);
+      expect(listener).not.toHaveBeenCalled();
     });
   });
 });
