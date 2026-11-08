@@ -9,6 +9,7 @@ export interface ShortcutItem {
   id: string;
   label: string;
   href: string;
+  onClick?: { action: 'set-state', key: string, value: any };
 }
 
 export function renderShortcuts(state: StateContext, props: ShortcutsProps) {
@@ -21,12 +22,18 @@ export function renderShortcuts(state: StateContext, props: ShortcutsProps) {
     const li = document.createElement('li');
     const a = document.createElement('button');
     a.textContent = shortcut.label;
-    a.addEventListener('click', (event) => {
-      event.preventDefault();
-      state.setState([['currentShortcut', shortcut.id]]);
-    });
     li.appendChild(a);
     ul.appendChild(li);
+
+    const onClick = shortcut.onClick;
+    if (onClick) {
+      a.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (onClick.action === 'set-state') {
+          state.setState([[onClick.key, onClick.value]]);
+        }
+      });
+    }
   });
 
   div.appendChild(h2);

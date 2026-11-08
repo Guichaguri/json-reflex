@@ -9,6 +9,7 @@ export interface ShortcutItem {
   id: string;
   label: string;
   href: string;
+  onClick?: { action: 'set-state', key: string, value: any };
 }
 
 export const Shortcuts = (props: ShortcutsProps) => {
@@ -20,8 +21,13 @@ export const Shortcuts = (props: ShortcutsProps) => {
       <ul>
         {props.shortcuts.map((shortcut) => (
           <li key={shortcut.id}>
-            <button onClick={() => {
-              state.setState([['currentShortcut', shortcut.id]]);
+            <button onClick={(e) => {
+              if (shortcut.onClick) {
+                e.preventDefault();
+                if (shortcut.onClick.action === 'set-state') {
+                  state.setState([[shortcut.onClick.key, shortcut.onClick.value]]);
+                }
+              }
             }}>{shortcut.label}</button>
           </li>
         ))}

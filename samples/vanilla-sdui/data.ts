@@ -22,16 +22,19 @@ export function loadData(): ComponentItem[] {
           id: 'shortcut-1',
           label: { $expr: 'currentShortcut == "shortcut-1" ? "You clicked me" : "Shortcut 1"' },
           href: '#',
+          onClick: { action: 'set-state', key: 'currentShortcut', value: 'shortcut-1' },
         },
         {
           id: 'shortcut-2',
           label: 'Shortcut 2',
           href: '#',
+          onClick: { action: 'set-state', key: 'currentShortcut', value: 'shortcut-2' },
         },
         {
           id: 'shortcut-3',
           label: 'Shortcut 3',
           href: '#',
+          onClick: { action: 'set-state', key: 'currentShortcut', value: 'shortcut-3' },
         }
       ],
     },
