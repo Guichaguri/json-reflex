@@ -44,6 +44,16 @@ describe('stringFunctions', () => {
     expect(call('includes', 123, '2')).toBe(true);
     expect(call('padStart', 7, 2, '0')).toBe('07');
   });
+
+  it('caps the length of padStart and padEnd at 10,000 characters', () => {
+    expect(call('padStart', 'a', 1e9)).toHaveLength(10_000);
+    expect(call('padEnd', 'a', 1e9, '0')).toHaveLength(10_000);
+  });
+
+  it('caps the repeat count at 10,000', () => {
+    expect(call('repeat', 'a', 1e9)).toHaveLength(10_000);
+    expect(call('repeat', 'a', Infinity)).toHaveLength(10_000);
+  });
 });
 
 describe('mathFunctions', () => {

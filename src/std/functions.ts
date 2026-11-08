@@ -3,6 +3,13 @@ import type { ExpressionFunction } from '../core/types.js';
 const ensureStr = (str: any): string => (str ?? '').toString();
 
 /**
+ * The maximum length passed to `repeat`, `padStart` and `padEnd`.
+ * Longer results are capped, which stops an expression from allocating huge strings, like `repeat("a", 1000000000)`.
+ * To allow longer strings, register your own versions of these functions.
+ */
+const MAX_LENGTH = 10_000;
+
+/**
  * String-based functions. Allows basic string manipulation.
  */
 export const stringFunctions = new Map<string, ExpressionFunction>([
@@ -18,9 +25,9 @@ export const stringFunctions = new Map<string, ExpressionFunction>([
   ['endsWith', (str: string, needle: string) => ensureStr(str).endsWith(needle)],
   ['indexOf', (str: string, needle: string) => ensureStr(str).indexOf(needle)],
   ['lastIndexOf', (str: string, needle: string) => ensureStr(str).lastIndexOf(needle)],
-  ['padStart', (str: string, targetLength: number, padString?: string) => ensureStr(str).padStart(targetLength, padString)],
-  ['padEnd', (str: string, targetLength: number, padString?: string) => ensureStr(str).padEnd(targetLength, padString)],
-  ['repeat', (str: string, count: number) => ensureStr(str).repeat(count)],
+  ['padStart', (str: string, targetLength: number, padString?: string) => ensureStr(str).padStart(Math.min(targetLength, MAX_LENGTH), padString)],
+  ['padEnd', (str: string, targetLength: number, padString?: string) => ensureStr(str).padEnd(Math.min(targetLength, MAX_LENGTH), padString)],
+  ['repeat', (str: string, count: number) => ensureStr(str).repeat(Math.min(count, MAX_LENGTH))],
 ]);
 
 /**
