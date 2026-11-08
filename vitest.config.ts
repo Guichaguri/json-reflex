@@ -7,5 +7,14 @@ export default defineConfig({
       enabled: true,
       include: ['test/**/*.test-d.ts'],
     },
+    coverage: {
+      include: ['src/**/*.{ts,tsx}'],
+      thresholds: {
+        lines: 100,
+        functions: 100,
+        branches: 100,
+        statements: 100,
+      },
+    },
   },
 });
