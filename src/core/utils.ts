@@ -1,6 +1,15 @@
 /**
- * Walk through all properties of an object, including nested objects, and apply a callback function to each property.
+ * Defines an own, writable and enumerable property.
+ * Unlike an assignment, this never triggers setters such as `__proto__`.
+ */
+function defineValue(obj: object, key: string, value: unknown): void {
+  Object.defineProperty(obj, key, { value, writable: true, enumerable: true, configurable: true });
+}
+
+/**
+ * Walk through all properties of an object, including nested objects and arrays, and apply a callback function to each property.
  * The callback receives the path to the property, the key of the property, and the value of the property.
+ * The object must not contain circular references.
  *
  * @param obj The object to walk through.
  * @param callback A function to call for each property, receiving the path, key, and value.
@@ -26,6 +35,9 @@ export function walkThroughObject(
  * Sets a value in an object at a specified path, creating nested objects as needed.
  * If the path does not exist, it will be created. The value will be set at the final key in the path.
  *
+ * Only own properties are followed and set, so keys such as `__proto__` or `constructor`
+ * are treated as ordinary keys and never reach the prototype.
+ *
  * @param obj The object in which to set the value.
  * @param path An array of strings representing the path to the property where the value should be set.
  * @param key The key of the property to set at the end of the path.
@@ -35,11 +47,11 @@ export function setFromPath(obj: any, path: string[], key: string, value: any): 
   let current = obj;
 
   for (const segment of path) {
-    if (!(segment in current)) {
-      current[segment] = {};
+    if (!Object.hasOwn(current, segment)) {
+      defineValue(current, segment, {});
     }
     current = current[segment];
   }
 
-  current[key] = value;
+  defineValue(current, key, value);
 }
