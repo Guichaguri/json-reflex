@@ -50,6 +50,11 @@ export interface ExpressionEngineOptions {
   deepClone?: (<T>(object: T) => T) | false;
 
   /**
+   * Whether it should not deep clone on updates
+   */
+  disableCloneOnUpdate?: boolean;
+
+  /**
    * Called when an expression fails to parse or evaluate. The failed expression's value becomes `undefined`.
    *
    * When omitted, the error is thrown instead, after every other expression in the engine has been updated.

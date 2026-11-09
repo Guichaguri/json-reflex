@@ -193,6 +193,7 @@ Holds the shared state, a `Map` of keys to primitive values.
 | `functions` | A `Map` of the functions expressions can call. |
 | `onError`   | Receives each `ExpressionError`. See [Errors](#errors). |
 | `deepClone` | How `object` is copied. Defaults to `structuredClone`, or JSON where it's missing (like React Native), so `object` must be serializable. Pass your own function, or `false` to modify `object` in place. |
+| `disableCloneOnUpdate` | By default, each update replaces `evaluated` with a new copy, so code that compares by reference (like `React.memo`) sees the change. Set to `true` to update the same object in place, which avoids the copy but keeps the same reference. |
 
 ### React
 

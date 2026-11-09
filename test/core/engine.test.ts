@@ -251,6 +251,36 @@ describe('ExpressionEngine', () => {
       expect(deepClone).toHaveBeenCalledTimes(1);
     });
 
+    it('returns a new object on each update by default', () => {
+      const context = new StateContext(new Map([['a', 1]]));
+      const engine = new ExpressionEngine(context, { value: { $expr: 'a' } }, options);
+      engine.subscribe(() => {});
+
+      const initial = engine.evaluated;
+      context.setState([['a', 2]]);
+      const afterSetState = engine.evaluated;
+      engine.update();
+
+      expect(afterSetState).not.toBe(initial);
+      expect(engine.evaluated).not.toBe(afterSetState);
+      expect(initial).toEqual({ value: 1 });
+    });
+
+    it('updates the same object in place when disableCloneOnUpdate is set', () => {
+      const context = new StateContext(new Map([['a', 1]]));
+      const engine = new ExpressionEngine(context, { value: { $expr: 'a' } }, { ...options, disableCloneOnUpdate: true });
+      const onChanged = vi.fn();
+      engine.subscribe(onChanged);
+
+      const initial = engine.evaluated;
+      context.setState([['a', 2]]);
+      engine.update();
+
+      expect(engine.evaluated).toBe(initial);
+      expect(onChanged).toHaveBeenCalledWith(initial);
+      expect(initial).toEqual({ value: 2 });
+    });
+
     it('mutates the raw object when deepClone is false', () => {
       const raw = { value: { $expr: '1' } };
       const engine = new ExpressionEngine(new StateContext(), raw, { ...options, deepClone: false });

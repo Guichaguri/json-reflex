@@ -84,11 +84,17 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
    */
   public subscribe(onChanged: (evaluated: ObjectWithoutExpressions<T>) => void): () => void {
     return this.context.subscribe((state: Map<string, any>, changedProperties: string[]) => {
-      if (changedProperties.some(prop => this.dependencies.has(prop))) {
-        const errors = this.evaluate(state);
-        onChanged(this.evaluatedObject);
-        this.reportErrors(errors);
+      if (!changedProperties.some(prop => this.dependencies.has(prop))) {
+        return;
       }
+
+      if (!this.options.disableCloneOnUpdate) {
+        this.evaluatedObject = this.deepClone(this.evaluatedObject);
+      }
+
+      const errors = this.evaluate(state);
+      onChanged(this.evaluatedObject);
+      this.reportErrors(errors);
     });
   }
 
@@ -103,6 +109,10 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
    * @throws {ExpressionError} If an expression fails and `options.onError` is not set.
    */
   public update(): void {
+    if (!this.options.disableCloneOnUpdate) {
+      this.evaluatedObject = this.deepClone(this.evaluatedObject);
+    }
+
     this.reportErrors(this.evaluate(this.context.getState()));
   }
 
@@ -157,7 +167,7 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
    * @param object The base object
    * @returns A clone of the base object
    */
-  private deepClone(object: T): T {
+  private deepClone<T>(object: T): T {
     if (this.options.deepClone === false) {
       return object;
     }
