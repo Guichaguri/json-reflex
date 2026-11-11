@@ -1,6 +1,6 @@
 import { StateContext } from './context.js';
 import { ExpressionError } from './errors.js';
-import { setFromPath, walkThroughObject } from './utils.js';
+import { deepClone, setFromPath, walkThroughObject } from './utils.js';
 import type {
   ExpressionEngineOptions,
   ObjectWithExpressions,
@@ -20,8 +20,10 @@ interface ExpressionRef {
  * It tracks dependencies and updates the evaluated object when relevant state changes occur.
  */
 export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
-  private expressions: ExpressionRef[] = [];
-  private dependencies: Set<string> = new Set<string>();
+  private readonly skipKeys: string[];
+  private readonly expressions: ExpressionRef[] = [];
+  private readonly dependencies: Set<string> = new Set<string>();
+
   private evaluatedObject: ObjectWithoutExpressions<T>;
 
   /**
@@ -38,6 +40,7 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
     raw: T,
     private readonly options: ExpressionEngineOptions,
   ) {
+    this.skipKeys = options.skipKeys ?? [];
     this.evaluatedObject = this.deepClone(raw) as ObjectWithoutExpressions<T>;
     const errors: ExpressionError[] = [];
 
@@ -59,7 +62,7 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
         errors.push(new ExpressionError(String(expression), [...path, key], 'parse', error));
         setFromPath(this.evaluatedObject, path, key, undefined);
       }
-    });
+    }, [], this.skipKeys);
 
     // Initial values
     errors.push(...this.evaluate(context.getState()));
@@ -176,13 +179,7 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
       return this.options.deepClone(object);
     }
 
-    // Structured clone is the fastest deep clone implementation
-    if (typeof structuredClone === 'function') {
-      return structuredClone(object);
-    }
-
-    // JSON for platforms with no structuredClone (like React Native)
-    return JSON.parse(JSON.stringify(object));
+    return deepClone(object, this.skipKeys);
   }
 
 }

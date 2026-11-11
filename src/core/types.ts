@@ -55,6 +55,13 @@ export interface ExpressionEngineOptions {
   disableCloneOnUpdate?: boolean;
 
   /**
+   * The list of property names the engine should not go through when evaluating expressions and deep cloning objects.
+   *
+   * For instance, you might not want for an engine of a single component to go through all of its children.
+   */
+  skipKeys?: string[];
+
+  /**
    * Called when an expression fails to parse or evaluate. The failed expression's value becomes `undefined`.
    *
    * When omitted, the error is thrown instead, after every other expression in the engine has been updated.

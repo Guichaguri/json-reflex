@@ -220,18 +220,17 @@ describe('ExpressionEngine', () => {
   });
 
   describe('cloning', () => {
-    it('uses structuredClone by default', () => {
-      const spy = vi.spyOn(globalThis, 'structuredClone');
-      const raw = { nested: { value: { $expr: '1' } } };
+    it('deep clones the raw object by default', () => {
+      const raw = { nested: { value: { $expr: '1' } }, list: [{ a: 1 }] };
       const engine = new ExpressionEngine(new StateContext(), raw, options);
 
-      expect(spy).toHaveBeenCalledTimes(1);
-      expect(engine.evaluated).toEqual({ nested: { value: 1 } });
-      expect(raw).toEqual({ nested: { value: { $expr: '1' } } });
-      spy.mockRestore();
+      expect(engine.evaluated).toEqual({ nested: { value: 1 }, list: [{ a: 1 }] });
+      expect(engine.evaluated.list).not.toBe(raw.list);
+      expect(engine.evaluated.list[0]).not.toBe(raw.list[0]);
+      expect(raw).toEqual({ nested: { value: { $expr: '1' } }, list: [{ a: 1 }] });
     });
 
-    it('falls back to JSON when structuredClone is not available', () => {
+    it('does not depend on structuredClone', () => {
       vi.stubGlobal('structuredClone', undefined);
       try {
         const raw = { nested: { value: { $expr: '1' } } };
@@ -242,6 +241,16 @@ describe('ExpressionEngine', () => {
       } finally {
         vi.unstubAllGlobals();
       }
+    });
+
+    it('keeps skipKeys values as the original reference without evaluating them', () => {
+      const children = [{ value: { $expr: '2' } }];
+      const raw = { value: { $expr: '1' }, children };
+      const engine = new ExpressionEngine(new StateContext(), raw, { ...options, skipKeys: ['children'] });
+
+      expect(engine.evaluated.value).toBe(1);
+      expect(engine.evaluated.children).toBe(children);
+      expect(children).toEqual([{ value: { $expr: '2' } }]);
     });
 
     it('uses a custom deepClone function', () => {
