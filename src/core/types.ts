@@ -46,6 +46,8 @@ export interface ExpressionEngineOptions {
    * The engine will clone the object before mutating it.
    * This allows providing a custom deep clone function implementation.
    * Set this to `false` to mutate the original object, without deep cloning it.
+   *
+   * The default deep clone implementation clones everything except the keys in `skipKeys`.
    */
   deepClone?: (<T>(object: T) => T) | false;
 
