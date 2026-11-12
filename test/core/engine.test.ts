@@ -276,6 +276,23 @@ describe('ExpressionEngine', () => {
       expect(engine.evaluated.props.children).toBe(before.props.children);
     });
 
+    it('keeps the reference of several skipped values under the same parent', () => {
+      const context = new StateContext(new Map([['a', 1]]));
+      const raw = { value: { $expr: 'a' }, slots: { header: { b: 1 }, footer: { c: 2 }, body: { d: 3 } } };
+      const engine = new ExpressionEngine(context, raw, {
+        ...options,
+        shouldSkip: (path, key) => path[0] === 'slots' && key !== 'body',
+      });
+
+      const before = engine.evaluated;
+      engine.update();
+
+      expect(engine.evaluated.slots).not.toBe(before.slots);
+      expect(engine.evaluated.slots.header).toBe(before.slots.header);
+      expect(engine.evaluated.slots.footer).toBe(before.slots.footer);
+      expect(engine.evaluated.slots.body).not.toBe(before.slots.body);
+    });
+
     it('does not pollute prototypes with skipped "__proto__" or "constructor" paths', () => {
       const raw = JSON.parse('{"__proto__":{"children":[1]},"constructor":{"children":[2]}}');
       new ExpressionEngine(new StateContext(), raw, { ...options, shouldSkip: (_path, key) => key === 'children' });

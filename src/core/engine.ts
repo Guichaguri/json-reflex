@@ -67,10 +67,7 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
         let obj = this.skipTree;
 
         for (const part of path) {
-          if (!obj[part]) {
-            obj[part] = Object.create(null);
-          }
-          obj = obj[part] as PathTree;
+          obj = (obj[part] ??= Object.create(null)) as PathTree;
         }
 
         obj[key] = true;
