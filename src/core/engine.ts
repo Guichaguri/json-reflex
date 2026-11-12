@@ -1,6 +1,6 @@
 import { StateContext } from './context.js';
 import { ExpressionError } from './errors.js';
-import { deepClone, setFromPath, walkThroughObject } from './utils.js';
+import { deepClone, type PathTree, setFromPath, walkThroughObject } from './utils.js';
 import type {
   ExpressionEngineOptions,
   ObjectWithExpressions,
@@ -20,7 +20,8 @@ interface ExpressionRef {
  * It tracks dependencies and updates the evaluated object when relevant state changes occur.
  */
 export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
-  private readonly skipKeys: string[];
+  // Nodes have no prototype, so keys like `__proto__` or `constructor` from the data can't reach Object.prototype
+  private readonly skipTree: PathTree = Object.create(null);
   private readonly expressions: ExpressionRef[] = [];
   private readonly dependencies: Set<string> = new Set<string>();
 
@@ -40,7 +41,6 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
     raw: T,
     private readonly options: ExpressionEngineOptions,
   ) {
-    this.skipKeys = options.skipKeys ?? [];
     this.evaluatedObject = this.deepClone(raw) as ObjectWithoutExpressions<T>;
     const errors: ExpressionError[] = [];
 
@@ -62,7 +62,23 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
         errors.push(new ExpressionError(String(expression), [...path, key], 'parse', error));
         setFromPath(this.evaluatedObject, path, key, undefined);
       }
-    }, [], this.skipKeys);
+    }, (path, key, value) => {
+      if (this.options.shouldSkip?.(path, key, value)) {
+        let obj = this.skipTree;
+
+        for (const part of path) {
+          if (!obj[part]) {
+            obj[part] = Object.create(null);
+          }
+          obj = obj[part] as PathTree;
+        }
+
+        obj[key] = true;
+        return true;
+      }
+
+      return false;
+    }, []);
 
     // Initial values
     errors.push(...this.evaluate(context.getState()));
@@ -179,7 +195,7 @@ export class ExpressionEngine<T extends ObjectWithExpressions<T>> {
       return this.options.deepClone(object);
     }
 
-    return deepClone(object, this.skipKeys);
+    return deepClone(object, this.skipTree);
   }
 
 }

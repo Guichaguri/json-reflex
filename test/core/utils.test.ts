@@ -50,10 +50,10 @@ describe('deepClone', () => {
     expect(obj).toEqual({ a: { b: [1, 2] } });
   });
 
-  it('keeps the original reference for skipped keys', () => {
+  it('keeps the original reference for a skipped top-level path', () => {
     const children = [{ type: 'Text' }];
     const obj = { type: 'View', props: { style: { flex: 1 } }, children };
-    const clone = deepClone(obj, ['children']);
+    const clone = deepClone(obj, { children: true });
 
     expect(clone).toEqual(obj);
     expect(clone.children).toBe(children);
@@ -61,29 +61,89 @@ describe('deepClone', () => {
     expect(clone.props.style).not.toBe(obj.props.style);
   });
 
-  it('skips keys at every depth', () => {
-    const inner = [{ type: 'Text' }];
-    const obj = { props: { slot: { children: inner, other: { a: 1 } } } };
-    const clone = deepClone(obj, ['children']);
+  it('keeps the original reference for a skipped nested path', () => {
+    const obj = { props: { slot: { children: [{ a: 1 }], other: { b: 2 } } } };
+    const clone = deepClone(obj, { props: { slot: { children: true } } });
 
-    expect(clone.props.slot.children).toBe(inner);
+    expect(clone).toEqual(obj);
+    expect(clone.props.slot.children).toBe(obj.props.slot.children);
+    expect(clone.props).not.toBe(obj.props);
+    expect(clone.props.slot).not.toBe(obj.props.slot);
     expect(clone.props.slot.other).not.toBe(obj.props.slot.other);
   });
 
-  it('supports multiple skipped keys', () => {
-    const obj = { a: { x: 1 }, b: { y: 2 }, c: { z: 3 } };
-    const clone = deepClone(obj, ['a', 'c']);
+  it('only skips the exact path, not the same key elsewhere', () => {
+    const obj = { children: { a: 1 }, props: { children: { b: 2 } } };
+    const clone = deepClone(obj, { props: { children: true } });
+
+    expect(clone.props.children).toBe(obj.props.children);
+    expect(clone.children).not.toBe(obj.children);
+  });
+
+  it('matches array indices', () => {
+    const obj = { list: [{ children: { a: 1 } }, { children: { b: 2 } }, { children: { c: 3 } }] };
+    const clone = deepClone(obj, { list: { 0: { children: true }, 2: { children: true } } });
+
+    expect(clone.list[0]!.children).toBe(obj.list[0]!.children);
+    expect(clone.list[1]!.children).not.toBe(obj.list[1]!.children);
+    expect(clone.list[2]!.children).toBe(obj.list[2]!.children);
+    expect(clone.list[0]).not.toBe(obj.list[0]);
+  });
+
+  it('skips a whole array element', () => {
+    const obj = { list: [{ a: 1 }, { b: 2 }] };
+    const clone = deepClone(obj, { list: { 1: true } });
+
+    expect(clone.list[0]).not.toBe(obj.list[0]);
+    expect(clone.list[1]).toBe(obj.list[1]);
+  });
+
+  it('supports multiple paths', () => {
+    const obj = { a: { x: 1 }, b: { y: 2 }, c: { z: { w: 3 } } };
+    const clone = deepClone(obj, { a: true, c: { z: true } });
 
     expect(clone.a).toBe(obj.a);
     expect(clone.b).not.toBe(obj.b);
-    expect(clone.c).toBe(obj.c);
+    expect(clone.c).not.toBe(obj.c);
+    expect(clone.c.z).toBe(obj.c.z);
   });
 
-  it('does not skip array indices matching a skipped key', () => {
-    const obj = { list: [{ a: 1 }] };
-    const clone = deepClone(obj, ['0']);
+  it('clones everything with an empty tree', () => {
+    const obj = { a: { b: 1 } };
+    const clone = deepClone(obj, {});
 
-    expect(clone.list[0]).not.toBe(obj.list[0]);
+    expect(clone).toEqual(obj);
+    expect(clone.a).not.toBe(obj.a);
+  });
+
+  it('ignores paths that do not exist', () => {
+    const obj = { a: { b: 1 } };
+    const clone = deepClone(obj, { missing: { key: true }, a: { b: { c: true } } });
+
+    expect(clone).toEqual(obj);
+    expect(clone.a).not.toBe(obj.a);
+  });
+
+  it('does not match inherited properties of the tree as path segments', () => {
+    const obj = { constructor: { a: 1 }, toString: { b: 2 } };
+    const clone = deepClone(obj, { other: true });
+
+    expect(clone.constructor).not.toBe(obj.constructor);
+    expect(clone.toString).not.toBe(obj.toString);
+    expect(clone).toEqual(obj);
+  });
+
+  it('skips a "__proto__" path as an ordinary key', () => {
+    const obj = JSON.parse('{"__proto__":{"a":1},"b":{"c":2}}');
+    const tree = Object.create(null);
+    tree['__proto__'] = true;
+    const clone = deepClone(obj, tree);
+
+    expect(Object.getOwnPropertyDescriptor(clone, '__proto__')?.value).toBe(
+      Object.getOwnPropertyDescriptor(obj, '__proto__')?.value,
+    );
+    expect(Object.getPrototypeOf(clone)).toBe(Object.prototype);
+    expect(clone.b).not.toBe(obj.b);
   });
 
   it('keeps "__proto__" as an own key without changing the prototype', () => {
@@ -106,7 +166,7 @@ describe('walkThroughObject', () => {
     const visited: [string[], string, any][] = [];
     walkThroughObject({ a: 1, b: { c: 2, d: { e: 3 } } }, (path, key, value) => {
       visited.push([path, key, value]);
-    });
+    }, () => false);
 
     expect(visited).toEqual([
       [[], 'a', 1],
@@ -121,7 +181,7 @@ describe('walkThroughObject', () => {
     const visited: [string[], string, any][] = [];
     walkThroughObject({ list: ['x', { y: 1 }] }, (path, key, value) => {
       visited.push([path, key, value]);
-    });
+    }, () => false);
 
     expect(visited).toEqual([
       [[], 'list', ['x', { y: 1 }]],
@@ -133,7 +193,7 @@ describe('walkThroughObject', () => {
 
   it('does not recurse into null values', () => {
     const callback = vi.fn();
-    walkThroughObject({ a: null }, callback);
+    walkThroughObject({ a: null }, callback, () => false);
 
     expect(callback).toHaveBeenCalledTimes(1);
     expect(callback).toHaveBeenCalledWith([], 'a', null);
@@ -143,7 +203,7 @@ describe('walkThroughObject', () => {
     const obj = Object.create({ inherited: true });
     obj.own = 1;
     const callback = vi.fn();
-    walkThroughObject(obj, callback);
+    walkThroughObject(obj, callback, () => false);
 
     expect(callback).toHaveBeenCalledTimes(1);
     expect(callback).toHaveBeenCalledWith([], 'own', 1);
@@ -151,24 +211,49 @@ describe('walkThroughObject', () => {
 
   it('prefixes paths with the base path', () => {
     const callback = vi.fn();
-    walkThroughObject({ a: 1 }, callback, ['root']);
+    walkThroughObject({ a: 1 }, callback, () => false, ['root']);
 
     expect(callback).toHaveBeenCalledWith(['root'], 'a', 1);
   });
 
-  it('skips keys and their subtrees', () => {
-    const callback = vi.fn();
-    walkThroughObject({ a: 1, children: [{ b: 2 }] }, callback, [], ['children']);
+  it('calls shouldSkip for every property, with its path, key and value', () => {
+    const shouldSkip = vi.fn(() => false);
+    const value = { a: 1, b: { c: null, d: [2] } };
+    walkThroughObject(value, () => {}, shouldSkip);
 
-    expect(callback).toHaveBeenCalledTimes(1);
-    expect(callback).toHaveBeenCalledWith([], 'a', 1);
+    expect(shouldSkip.mock.calls).toEqual([
+      [[], 'a', 1],
+      [[], 'b', value.b],
+      [['b'], 'c', null],
+      [['b'], 'd', value.b.d],
+      [['b', 'd'], '0', 2],
+    ]);
   });
 
-  it('skips keys at every depth', () => {
+  it('does not visit a skipped value or what is inside it', () => {
+    const visited: [string[], string, any][] = [];
+    const shouldSkip = vi.fn((_path: string[], key: string) => key === 'children');
+    walkThroughObject({ a: 1, children: [{ b: 2 }] }, (path, key, value) => {
+      visited.push([path, key, value]);
+    }, shouldSkip);
+
+    expect(visited).toEqual([[[], 'a', 1]]);
+    expect(shouldSkip).not.toHaveBeenCalledWith(['children'], '0', expect.anything());
+  });
+
+  it('skips primitive values', () => {
+    const callback = vi.fn();
+    walkThroughObject({ a: 1, b: 2 }, callback, (_path, key) => key === 'a');
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).toHaveBeenCalledWith([], 'b', 2);
+  });
+
+  it('skips values at any depth', () => {
     const visited: [string[], string, any][] = [];
     walkThroughObject({ props: { children: { a: 1 }, b: 2 } }, (path, key, value) => {
       visited.push([path, key, value]);
-    }, [], ['children']);
+    }, (path, key) => path.length === 1 && key === 'children');
 
     expect(visited).toEqual([
       [[], 'props', { children: { a: 1 }, b: 2 }],
@@ -178,7 +263,7 @@ describe('walkThroughObject', () => {
 
   it('does nothing for an empty object', () => {
     const callback = vi.fn();
-    walkThroughObject({}, callback);
+    walkThroughObject({}, callback, () => false);
 
     expect(callback).not.toHaveBeenCalled();
   });

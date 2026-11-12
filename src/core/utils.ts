@@ -11,36 +11,55 @@ function defineValue(obj: object, key: string, value: unknown): void {
  * Other values, such as class instances, Date, Map or Set, are not supported.
  * The data must not contain circular references.
  *
- * Properties whose key is in `skip` are not cloned: the clone keeps the original reference.
- * The skip list applies at every depth.
+ * Values at the paths in `skipTree` are not cloned: the clone keeps the original reference.
+ * Each path is a branch of nested keys from the root, using indices for arrays, ending in `true`.
+ * For instance, `{ component: { 0: { children: true } } }` skips `value.component[0].children`.
  *
  * @param value The JSON value to clone.
- * @param skip Keys whose values should be shared with the original instead of cloned.
+ * @param skipTree Paths whose values should be shared with the original instead of cloned.
  * @returns A deep clone of the value.
  */
-export function deepClone<T>(value: T, skip: readonly string[] = []): T {
-  return typeof value === 'object' && value !== null ? cloneObject(value, skip) : value;
+export function deepClone<T>(value: T, skipTree?: PathTree): T {
+  if (typeof value !== 'object' || value === null) return value;
+
+  return cloneObject(value, skipTree);
+}
+
+/**
+ * A tree of path segments. `true` marks the end of a path.
+ * Nodes have no prototype, so keys like `constructor` don't match inherited properties.
+ */
+export interface PathTree {
+  [key: string]: PathTree | true;
 }
 
 /**
  * Clones a non-null object or array. Primitives are copied inline instead of
  * recursing into them, saving a function call per leaf value.
+ * `tree` is the part of the skip paths under this value, or `undefined` when none go through it.
  */
-function cloneObject(value: any, skip: readonly string[]): any {
+function cloneObject(value: any, tree: PathTree | undefined): any {
   if (Array.isArray(value)) {
     const out = new Array(value.length);
     for (let i = 0; i < value.length; i++) {
       const v = value[i];
-      out[i] = typeof v === 'object' && v !== null ? cloneObject(v, skip) : v;
+      if (typeof v === 'object' && v !== null) {
+        const node = tree && tree[i];
+        out[i] = node === true ? v : cloneObject(v, node);
+      } else {
+        out[i] = v;
+      }
     }
     return out;
   }
 
   const out: Record<string, any> = {};
   for (const key in value) {
-    const v = value[key];
-    // Skip lists are tiny, so includes() is faster than a Set
-    const cloned = typeof v !== 'object' || v === null || skip.includes(key) ? v : cloneObject(v, skip);
+    let cloned = value[key];
+    if (typeof cloned === 'object' && cloned !== null) {
+      const node = tree && tree[key];
+      if (node !== true) cloned = cloneObject(cloned, node);
+    }
     if (key === '__proto__') {
       defineValue(out, key, cloned);
     } else {
@@ -57,21 +76,27 @@ function cloneObject(value: any, skip: readonly string[]): any {
  *
  * @param obj The object to walk through.
  * @param callback A function to call for each property, receiving the path, key, and value.
+ * @param shouldSkip A function that checks whether an object should be skipped
  * @param basePath The current path to the property, used for recursion. Defaults to an empty array.
- * @param skipKeys The keys it should skip walking through
  */
 export function walkThroughObject(
   obj: object,
   callback: (path: string[], key: string, value: any) => void,
+  shouldSkip: (path: string[], key: string, value: any) => boolean,
   basePath: string[] = [],
-  skipKeys: string[] = [],
 ): void {
   for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key) && !skipKeys.includes(key)) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const value = (obj as any)[key];
+
+      if (shouldSkip(basePath, key, value)) {
+        continue;
+      }
+
       callback(basePath, key, value);
+
       if (value && typeof value === 'object') {
-        walkThroughObject(value, callback, [...basePath, key], skipKeys);
+        walkThroughObject(value, callback, shouldSkip, [...basePath, key]);
       }
     }
   }

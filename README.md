@@ -193,7 +193,7 @@ Holds the shared state, a `Map` of keys to primitive values.
 | `functions` | A `Map` of the functions expressions can call. |
 | `onError`   | Receives each `ExpressionError`. See [Errors](#errors). |
 | `deepClone` | How `object` is copied. The default copies JSON data only (objects, arrays, strings, numbers, booleans and `null`), so values like `Date`, `Map` or class instances aren't supported. Pass your own function, or `false` to modify `object` in place. |
-| `skipKeys`  | Property names the engine leaves alone, at any depth: expressions under them aren't evaluated, and the default `deepClone` keeps their original value instead of copying it. Useful when each component has its own engine, like `skipKeys: ['children']`, so a parent doesn't evaluate or copy its whole subtree. A custom `deepClone` function doesn't receive `skipKeys`. |
+| `shouldSkip` | Called as `shouldSkip(path, key, value)` for each property in `object`. Return `true` to leave it alone: it and the expressions under it aren't evaluated, and the default `deepClone` keeps its original value instead of copying it. Useful when each component has its own engine, like `shouldSkip: (path, key) => key === 'children'`, so a parent doesn't evaluate or copy its whole subtree. A custom `deepClone` function doesn't skip anything. |
 | `disableCloneOnUpdate` | By default, each update replaces `evaluated` with a new copy, so code that compares by reference (like `React.memo`) sees the change. Set to `true` to update the same object in place, which avoids the copy but keeps the same reference. |
 
 ### React

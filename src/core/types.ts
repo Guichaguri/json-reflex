@@ -47,7 +47,7 @@ export interface ExpressionEngineOptions {
    * This allows providing a custom deep clone function implementation.
    * Set this to `false` to mutate the original object, without deep cloning it.
    *
-   * The default deep clone implementation clones everything except the keys in `skipKeys`.
+   * The default deep clone implementation clones everything except the values skipped by `shouldSkip`.
    */
   deepClone?: (<T>(object: T) => T) | false;
 
@@ -57,11 +57,12 @@ export interface ExpressionEngineOptions {
   disableCloneOnUpdate?: boolean;
 
   /**
-   * The list of property names the engine should not go through when evaluating expressions and deep cloning objects.
+   * Called for each property walked through in the JSON tree.
+   * It should return `true` if the engine should not go through when evaluating expressions and deep cloning objects.
    *
    * For instance, you might not want for an engine of a single component to go through all of its children.
    */
-  skipKeys?: string[];
+  shouldSkip?: (path: string[], key: string, value: unknown) => boolean;
 
   /**
    * Called when an expression fails to parse or evaluate. The failed expression's value becomes `undefined`.

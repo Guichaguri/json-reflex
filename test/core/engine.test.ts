@@ -243,14 +243,45 @@ describe('ExpressionEngine', () => {
       }
     });
 
-    it('keeps skipKeys values as the original reference without evaluating them', () => {
-      const children = [{ value: { $expr: '2' } }];
-      const raw = { value: { $expr: '1' }, children };
-      const engine = new ExpressionEngine(new StateContext(), raw, { ...options, skipKeys: ['children'] });
+    it('does not evaluate values skipped by shouldSkip', () => {
+      const shouldSkip = vi.fn((_path: string[], key: string) => key === 'children');
+      const raw = { value: { $expr: '1' }, children: [{ value: { $expr: '2' } }] };
+      const engine = new ExpressionEngine(new StateContext(), raw, { ...options, shouldSkip });
 
-      expect(engine.evaluated.value).toBe(1);
-      expect(engine.evaluated.children).toBe(children);
-      expect(children).toEqual([{ value: { $expr: '2' } }]);
+      expect(engine.evaluated).toEqual({ value: 1, children: [{ value: { $expr: '2' } }] });
+      expect(shouldSkip).toHaveBeenCalledWith([], 'children', raw.children);
+      expect(shouldSkip).not.toHaveBeenCalledWith(['children'], '0', expect.anything());
+    });
+
+    it('does not evaluate a skipped expression', () => {
+      const raw = { value: { $expr: '1' }, other: { $expr: '2' } };
+      const engine = new ExpressionEngine(new StateContext(), raw, { ...options, shouldSkip: (_path, key) => key === 'value' });
+
+      expect(engine.evaluated).toEqual({ value: { $expr: '1' }, other: 2 });
+    });
+
+    it('keeps the reference of skipped values across updates', () => {
+      const context = new StateContext(new Map([['a', 1]]));
+      const raw = { value: { $expr: 'a' }, props: { children: [{ b: 1 }] } };
+      const engine = new ExpressionEngine(context, raw, {
+        ...options,
+        shouldSkip: (path, key) => path[0] === 'props' && key === 'children',
+      });
+
+      const before = engine.evaluated;
+      engine.update();
+
+      expect(engine.evaluated).not.toBe(before);
+      expect(engine.evaluated.props).not.toBe(before.props);
+      expect(engine.evaluated.props.children).toBe(before.props.children);
+    });
+
+    it('does not pollute prototypes with skipped "__proto__" or "constructor" paths', () => {
+      const raw = JSON.parse('{"__proto__":{"children":[1]},"constructor":{"children":[2]}}');
+      new ExpressionEngine(new StateContext(), raw, { ...options, shouldSkip: (_path, key) => key === 'children' });
+
+      expect(({} as any).children).toBeUndefined();
+      expect((Object as any).children).toBeUndefined();
     });
 
     it('uses a custom deepClone function', () => {
