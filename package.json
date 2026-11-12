@@ -1,6 +1,6 @@
 {
   "name": "json-reflex",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "author": "Guilherme Chaguri",
   "description": "A lightweight expression processor for evaluating expressions in a secure and efficient manner.",
