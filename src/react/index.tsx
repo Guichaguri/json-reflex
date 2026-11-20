@@ -1,7 +1,12 @@
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 import { StateContext } from '../core/context.js';
 import { ExpressionEngine } from '../core/engine.js';
-import type { ExpressionEngineOptions, ObjectWithExpressions, ObjectWithoutExpressions } from '../core/types.js';
+import type {
+  ExpressionEngineOptions,
+  ObjectWithExpressions,
+  ObjectWithoutExpressions,
+  Primitive
+} from '../core/types.js';
 
 /**
  * The value shared through the React context by {@link ExpressionStateProvider}.
@@ -24,7 +29,7 @@ const ExpressionStateContext = createContext<ExpressionStateContextData>({
  */
 export interface ExpressionStateProviderProps {
   /** The initial state. Only read on the first render. */
-  initialState?: Map<string, any>;
+  initialState?: Map<string, Primitive>;
   /** The default options for every engine created below this provider. Only read on the first render. */
   options?: ExpressionEngineOptions;
   children: ReactNode;
